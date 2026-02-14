@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { updateUser } from "../services/userService";
+import { getReviews } from "../services/reviewService";
+import type { Review } from "../types/Review";
 
 const Profile: React.FC = () => {
     const { user, login } = useAuth();
@@ -12,6 +14,7 @@ const Profile: React.FC = () => {
         skillsWanted: "",
         avatar: ""
     });
+    const [reviews, setReviews] = useState<Review[]>([]);
 
     useEffect(() => {
         if (user) {
@@ -22,6 +25,17 @@ const Profile: React.FC = () => {
                 skillsWanted: user.skillsWanted?.join(", ") || "",
                 avatar: user.avatar || ""
             });
+        }
+    }, [user]);
+
+    useEffect(() => {
+        if (user) {
+            getReviews(user._id).then(({ data }) => {
+                setReviews(data);
+                // Calculate stats from reviews or use user object if updated
+                // But the backend updates user on review creation so let's use user object for stats
+                // or just rely on the reviews length/reduce if we want live data
+            }).catch(console.error);
         }
     }, [user]);
 
@@ -83,6 +97,58 @@ const Profile: React.FC = () => {
                         <div className="text-gray-400 text-sm">Hours Received</div>
                         <div className="text-2xl font-bold text-purple-400">{user.totalHoursReceived}</div>
                     </div>
+                </div>
+
+                {/* Rating Section */}
+                <div className="mb-8 p-6 bg-white/5 rounded-xl border border-white/10">
+                    <div className="flex items-center gap-4">
+                        <div className="text-4xl font-bold text-white">{user.averageRating?.toFixed(1) || "0.0"}</div>
+                        <div>
+                            <div className="flex text-yellow-500 text-lg">
+                                {[...Array(5)].map((_, i) => (
+                                    <span key={i} className={i < Math.round(user.averageRating || 0) ? "opacity-100" : "opacity-30"}>★</span>
+                                ))}
+                            </div>
+                            <div className="text-gray-400 text-sm">{user.reviewCount || 0} Reviews</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Recent Reviews */}
+                <div className="mb-8">
+                    <h3 className="text-xl font-bold text-white mb-4 border-b border-gray-700 pb-2">Recent Reviews</h3>
+                    {reviews.length === 0 ? (
+                        <p className="text-gray-500 italic">No reviews yet.</p>
+                    ) : (
+                        <div className="space-y-4">
+                            {reviews.map((review) => (
+                                <div key={review._id} className="bg-white/5 p-4 rounded-lg border border-white/10">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-lg font-bold overflow-hidden">
+                                                {review.reviewerId.avatar ? (
+                                                    <img src={review.reviewerId.avatar} alt={review.reviewerId.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    review.reviewerId.name.charAt(0)
+                                                )}
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-white">{review.reviewerId.name}</div>
+                                                <div className="text-gray-500 text-xs">for {review.offerId.title}</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex text-yellow-500 text-sm">
+                                            {[...Array(5)].map((_, i) => (
+                                                <span key={i} className={i < review.rating ? "opacity-100" : "opacity-30"}>★</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <p className="text-gray-300 text-sm pl-13">{review.comment}</p>
+                                    <div className="text-right text-gray-600 text-xs mt-2">{new Date(review.createdAt).toLocaleDateString()}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {isEditing ? (

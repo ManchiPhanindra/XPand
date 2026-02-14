@@ -10,4 +10,6 @@ export interface User {
   totalHoursGiven: number;
   totalHoursReceived: number;
   giveScore: number;
+  averageRating?: number;
+  reviewCount?: number;
 }
