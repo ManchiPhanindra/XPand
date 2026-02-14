@@ -3,6 +3,8 @@ import { registerUser } from "../api/auth";
 import { useNavigate } from "react-router-dom";
 import loginBg from "../assets/login-bg.png";
 
+import toast from "react-hot-toast";
+
 const Register = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -19,10 +21,10 @@ const Register = () => {
     e.preventDefault();
     try {
       await registerUser(form);
-      alert("Registration successful! Please login.");
+      toast.success("Registration successful! Please login.");
       navigate("/");
     } catch (error: any) {
-      alert(error.response?.data?.message || "Error");
+      toast.error(error.response?.data?.message || "Error");
     }
   };
 

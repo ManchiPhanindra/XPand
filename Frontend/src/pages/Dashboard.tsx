@@ -4,6 +4,8 @@ import { useAuth } from "../context/AuthContext";
 import { getMyBookings, acceptBooking, rejectBooking, completeBooking } from "../services/bookingService";
 import { createReview } from "../services/reviewService";
 import ReviewModal from "../components/ReviewModal";
+import PromptModal from "../components/PromptModal";
+import toast from "react-hot-toast";
 import type { Booking } from "../types/Booking";
 
 // Helper component for Booking List
@@ -28,75 +30,95 @@ function BookingList({ title, bookings, isIncoming, onUpdate, onReview }: Bookin
       onUpdate();
     } catch (error) {
       console.error(`Failed to ${action} booking`, error);
-      alert(`Failed to ${action} booking`);
+      toast.error(`Failed to ${action} booking`);
     }
   };
 
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+
   const promptAccept = (id: string) => {
-    const link = prompt("Enter Meeting Link (e.g. Zoom/Google Meet URL):", "https://meet.google.com/...");
-    if (link) handleAction(id, "accept", link);
+    setSelectedBookingId(id);
+    setPromptOpen(true);
+  };
+
+  const handlePromptSubmit = (link: string) => {
+    if (selectedBookingId) {
+      handleAction(selectedBookingId, "accept", link);
+    }
   };
 
   return (
-    <div className="mb-8">
-      <h2 className="text-xl font-bold mb-4 text-white border-b border-gray-700 pb-2">{title}</h2>
-      {bookings.length === 0 ? (
-        <p className="text-gray-500 italic">No requests found.</p>
-      ) : (
-        <div className="grid gap-4">
-          {bookings.map((booking) => (
-            <div key={booking._id} className="glass-card p-4 rounded-lg flex flex-col md:flex-row justify-between items-center gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`px-2 py-0.5 text-xs rounded-full border ${booking.status === 'pending' ? 'border-yellow-500 text-yellow-500' :
-                    booking.status === 'accepted' ? 'border-blue-500 text-blue-500' :
-                      booking.status === 'completed' ? 'border-green-500 text-green-500' :
-                        'border-red-500 text-red-500'
-                    }`}>
-                    {booking.status.toUpperCase()}
-                  </span>
-                  <span className="text-gray-400 text-xs">{new Date(booking.createdAt).toLocaleDateString()}</span>
-                </div>
-                <h3 className="font-bold text-lg text-white">{booking.offerId.title}</h3>
-                <p className="text-gray-400 text-sm">
-                  {isIncoming
-                    ? `Requested by ${booking.requesterId.name}`
-                    : `Hosted by ${booking.offerId.userId?.name || 'Unknown'}`}
-                </p>
-                {booking.meetingLink && booking.status === 'accepted' && (
-                  <div className="mt-2 text-sm bg-blue-500/10 p-2 rounded text-blue-300 border border-blue-500/20">
-                    🔗 <a href={booking.meetingLink} target="_blank" rel="noreferrer" className="underline hover:text-white">Join Meeting</a>
+    <>
+      <div className="mb-8">
+        <h2 className="text-xl font-bold mb-4 text-white border-b border-gray-700 pb-2">{title}</h2>
+        {bookings.length === 0 ? (
+          <p className="text-gray-500 italic">No requests found.</p>
+        ) : (
+          <div className="grid gap-4">
+            {bookings.map((booking) => (
+              <div key={booking._id} className="glass-card p-4 rounded-lg flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`px-2 py-0.5 text-xs rounded-full border ${booking.status === 'pending' ? 'border-yellow-500 text-yellow-500' :
+                      booking.status === 'accepted' ? 'border-blue-500 text-blue-500' :
+                        booking.status === 'completed' ? 'border-green-500 text-green-500' :
+                          'border-red-500 text-red-500'
+                      }`}>
+                      {booking.status.toUpperCase()}
+                    </span>
+                    <span className="text-gray-400 text-xs">{new Date(booking.createdAt).toLocaleDateString()}</span>
                   </div>
-                )}
+                  <h3 className="font-bold text-lg text-white">{booking.offerId.title}</h3>
+                  <p className="text-gray-400 text-sm">
+                    {isIncoming
+                      ? `Requested by ${booking.requesterId.name}`
+                      : `Hosted by ${booking.offerId.userId?.name || 'Unknown'}`}
+                  </p>
+                  {booking.meetingLink && booking.status === 'accepted' && (
+                    <div className="mt-2 text-sm bg-blue-500/10 p-2 rounded text-blue-300 border border-blue-500/20">
+                      🔗 <a href={booking.meetingLink} target="_blank" rel="noreferrer" className="underline hover:text-white">Join Meeting</a>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  {isIncoming && booking.status === 'pending' && (
+                    <>
+                      <button onClick={() => promptAccept(booking._id)} className="btn-primary text-xs px-4 py-2">Accept</button>
+                      <button onClick={() => handleAction(booking._id, "reject")} className="bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30 px-3 py-1 rounded">Reject</button>
+                    </>
+                  )}
+
+                  {/* Mark as Completed Logic */}
+                  {booking.status === 'accepted' && (
+                    <button onClick={() => handleAction(booking._id, "complete")} className="bg-green-500/20 text-green-400 border border-green-500/50 hover:bg-green-500/30 px-3 py-1 rounded">
+                      Mark Completed
+                    </button>
+                  )}
+
+                  {/* Review Logic: Only for Ougoing (Requester) when Completed */}
+                  {!isIncoming && booking.status === 'completed' && onReview && (
+                    <button onClick={() => onReview(booking)} className="px-3 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded border border-yellow-500/50 hover:bg-yellow-500/30">
+                      ★ Review
+                    </button>
+                  )}
+                </div>
               </div>
-
-              <div className="flex gap-2">
-                {isIncoming && booking.status === 'pending' && (
-                  <>
-                    <button onClick={() => promptAccept(booking._id)} className="btn-primary text-xs px-4 py-2">Accept</button>
-                    <button onClick={() => handleAction(booking._id, "reject")} className="bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30 px-3 py-1 rounded">Reject</button>
-                  </>
-                )}
-
-                {/* Mark as Completed Logic */}
-                {booking.status === 'accepted' && (
-                  <button onClick={() => handleAction(booking._id, "complete")} className="bg-green-500/20 text-green-400 border border-green-500/50 hover:bg-green-500/30 px-3 py-1 rounded">
-                    Mark Completed
-                  </button>
-                )}
-
-                {/* Review Logic: Only for Ougoing (Requester) when Completed */}
-                {!isIncoming && booking.status === 'completed' && onReview && (
-                  <button onClick={() => onReview(booking)} className="px-3 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded border border-yellow-500/50 hover:bg-yellow-500/30">
-                    ★ Review
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <PromptModal
+        isOpen={promptOpen}
+        onClose={() => setPromptOpen(false)}
+        onSubmit={handlePromptSubmit}
+        title="Enter Meeting Link"
+        message="Please provide a meeting link (e.g., Zoom, Google Meet) for this session."
+        placeholder="https://meet.google.com/..."
+        defaultValue="https://meet.google.com/..."
+      />
+    </>
   );
 }
 
@@ -141,10 +163,10 @@ function Dashboard() {
         rating,
         comment
       });
-      alert("Review Submitted!");
+      toast.success("Review Submitted!");
       setIsReviewOpen(false);
     } catch (error: any) {
-      alert(error.response?.data?.message || "Failed to submit review");
+      toast.error(error.response?.data?.message || "Failed to submit review");
     }
   };
 

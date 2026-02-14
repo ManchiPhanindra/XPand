@@ -3,11 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import { updateOffer } from "../services/offerService";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+import toast from "react-hot-toast";
+import ConfirmModal from "../components/ConfirmModal";
 
 function EditOffer() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     const [formData, setFormData] = useState({
         title: "",
@@ -42,6 +45,7 @@ function EditOffer() {
             }
         } catch (error) {
             console.error("Failed to load offer", error);
+            toast.error("Failed to load offer");
         }
     };
 
@@ -54,12 +58,24 @@ function EditOffer() {
         try {
             if (id) {
                 await updateOffer(id, formData);
-                alert("Offer Updated!");
+                toast.success("Offer Updated!");
                 navigate("/offers");
             }
         } catch (error) {
-            alert("Failed to update offer");
+            toast.error("Failed to update offer");
             console.error(error);
+        }
+    };
+
+    const handleDelete = async () => {
+        try {
+            // @ts-ignore
+            await api.delete(`/offers/${id}`);
+            toast.success("Offer Deleted");
+            navigate("/offers");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete");
         }
     };
 
@@ -67,6 +83,15 @@ function EditOffer() {
 
     return (
         <div className="p-6 max-w-4xl mx-auto">
+            <ConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleDelete}
+                title="Delete Offer"
+                message="Are you sure you want to delete this offer? This action cannot be undone."
+                confirmLabel="Yes, Delete"
+            />
+
             <div className="glass-card p-8 rounded-xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-10 opacity-10 text-9xl text-blue-500 font-bold select-none pointer-events-none">
                     ✎
@@ -173,18 +198,7 @@ function EditOffer() {
                         Save Changes
                     </button>
                     <button
-                        onClick={async () => {
-                            if (window.confirm("Are you sure you want to delete this offer?")) {
-                                try {
-                                    // @ts-ignore
-                                    await api.delete(`/offers/${id}`);
-                                    navigate("/offers");
-                                } catch (error) {
-                                    console.error(error);
-                                    alert("Failed to delete");
-                                }
-                            }
-                        }}
+                        onClick={() => setIsDeleteModalOpen(true)}
                         className="bg-red-500/20 text-red-400 w-1/3 py-3 rounded-lg hover:bg-red-500/40 transition font-bold"
                     >
                         Delete Offer

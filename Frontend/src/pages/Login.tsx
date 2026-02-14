@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import loginBg from "../assets/login-bg.png";
 
+import toast from "react-hot-toast";
+
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -21,9 +23,10 @@ const Login = () => {
     try {
       const res = await loginUser(form);
       login(res.data.token, res.data.user);
+      toast.success("Login successful!");
       navigate("/dashboard");
     } catch (error: any) {
-      alert(error.response?.data?.message || "Error");
+      toast.error(error.response?.data?.message || "Invalid credentials");
     }
   };
 

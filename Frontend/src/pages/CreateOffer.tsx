@@ -3,6 +3,8 @@ import { createOffer } from "../services/offerService";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
+import toast from "react-hot-toast";
+
 function CreateOffer() {
   const [formData, setFormData] = useState({
     title: "",
@@ -24,17 +26,17 @@ function CreateOffer() {
   };
 
   const handleSubmit = async () => {
-    if (!user) return alert("Login required");
+    if (!user) return toast.error("Login required");
     try {
       await createOffer({
         ...formData,
         userId: user._id,
       });
 
-      alert("Offer Created!");
+      toast.success("Offer Created!");
       navigate("/dashboard");
     } catch (error) {
-      alert("Failed to create offer");
+      toast.error("Failed to create offer");
       console.error(error);
     }
   };
